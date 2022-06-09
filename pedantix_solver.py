@@ -19,6 +19,7 @@ from selenium.common.exceptions import NoSuchElementException, ElementNotInterac
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.keys import Keys
 import re
+import time
 
 """Specify here FIREFOX_LOCATION and GECKO_DRIVER
 
@@ -26,7 +27,6 @@ import re
 
 FIREFOX_LOCATION = r'C:\Program Files\Mozilla Firefox\firefox.exe'
 GECKO_DRIVER = r'C:\Users\galie\Desktop\OGAME\geckodriver.exe'
-
 
 """Tables initialization
 
@@ -266,6 +266,22 @@ def check_if_found():
     return check_clickable_by_xpath('//*[@id="share"]')
 
 
+def time_convert(sec):
+    """Converts the given second time in hours/minutes/seconds and prints it.
+
+    Parameters
+    -----------
+    sec: int
+        Time in seconds
+
+    """
+    mins = sec // 60
+    sec = sec % 60
+    hours = mins // 60
+    mins = mins % 60
+    print("Time Lapsed to find the article= {0}:{1}:{2}".format(int(hours), int(mins), sec))
+
+
 if __name__ == "__main__":
     # Program starts here
     options = Options()
@@ -273,14 +289,17 @@ if __name__ == "__main__":
     driver = webdriver.Firefox(executable_path=GECKO_DRIVER, options=options)
     driver.maximize_window()  # For maximizing window
 
+    start_time = time.time()
     init()
     open_google()
     nextGuess = guess_article("Constantinople")
     while True:
         nextGuess = guess_article(nextGuess)
         if nextGuess == "found_word":
+            end_time = time.time()
+            time_lapsed = end_time - start_time
+            time_convert(time_lapsed)
             break
         driver.switch_to.window(driver.window_handles[0])
 
-    print('Words used', already_guessed)
-    print('Articles visited', already_visited)
+    print('Number of articles visited', len(already_visited), '\nArticles visited', already_visited)
