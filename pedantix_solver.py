@@ -33,24 +33,18 @@ GECKO_DRIVER = r'C:\Users\galie\Desktop\OGAME\geckodriver.exe'
 """
 
 LITTLE_HELP = ["France", "le", "la", "l", "les", "une", "un", "de", "du", "des", "d", "a", "à", "ou", "est", "et",
-               "après",
-               "avant", "par", "il", "ils", "elle", "elles", "en", "laquelle", "lequel", "lorsque", "quand", "encore"]
+               "avant", "par", "il", "ils", "elle", "elles", "en", "laquelle", "lequel", "lorsque", "quand", "encore",
+               "pas", "sur", "autour", "environ", "manière", "beaucoup", "ont", "soit", "soient", "presque", "peut",
+               "être", "autre", "plus", "moins", "tel", "telle", "après","au"]
 already_guessed = []
 already_visited = []
-no_luck = []
-test = ["politique", "cyclisme", "football", "fonction d'onde", "religion", "physique", "science",
-        "sentiment", "histoire", "industrie", "animal", "géographie",
-        "guerre", "rage", "Nantes", "Munich", "Nankin", "Science-fiction", "Truffe", "Histoire de l'Australie",
-        "Émeu d'Australie", "Magic Johnson",
-        "Alfred Russel Wallace",
-        "Homophobie",
-        "Empire State Building",
-        "Processeur",
-        "Strasbourg",
-        "Système solaire",
-        "Nestlé", "Les Aventuriers du rail", "mécanique (science)", "mécanique quantique", "automobile", "chimie",
-        "trabsformations de la matière", "mathématiques", "toologie", "Catan", "mécanique (technique)", "jeu vidéo",
-        "transition de phase"]
+no_luck = ["politique", "cyclisme", "football", "fonction d'onde", "religion", "physique", "science",
+           "sentiment", "histoire", "industrie", "animal", "géographie",
+           "guerre", "rage", "Nantes", "Munich", "Nankin", "Science-fiction", "Truffe", "Histoire de l'Australie",
+           "Émeu d'Australie", "Magic Johnson", "Alfred Russel Wallace", "Homophobie", "Empire State Building",
+           "Processeur", "Strasbourg", "Système solaire", "Nestlé", "Les Aventuriers du rail", "mécanique (science)",
+           "mécanique quantique", "automobile", "chimie", "transformations de la matière", "mathématiques", "toologie",
+           "Catan", "mécanique (technique)", "jeu vidéo", "transition de phase"]
 
 
 def init():
@@ -99,23 +93,20 @@ def guess_word(string):
         return [False, 0, string]
 
 
-def guess_article(name):
-    """A function that guesses the words in an article. Returns the best scoring word and stores good scoring words (
-    >2 green/orange squares) in no_luck.
+def guess_article():
+    """A function that guesses the words on the current article (already opened). Leaves the driver on an interesting
+       or random article.
 
-        Parameters
-        -----------
-        name: str
-            The article to analyze
+       Returns
+       ----------
+       "found word": str
+            Only if the word is found.
+       "not found" : str
+            While the word is not found
 
-        Returns
-        -----------
-        best_word: str
-            The best scoring word found in the article if no scoring words the next one in no_luck. If no_luck is empty,
-            it sends a random article.
-
-        """
-    guess_list = go_to_wikipedia_article(name)
+    """
+    driver.switch_to.window(driver.window_handles[-1])
+    guess_list = reads_article()
     best_word_n = 0
     best_word = 'France'
     for word in guess_list:
@@ -134,10 +125,12 @@ def guess_article(name):
         if len(no_luck) > 0:
             best_word = no_luck[-1]
             no_luck.pop()
+            go_to_wikipedia_article(best_word)
         else:
-            go_to_random_article(read=False)
-            best_word = driver.find_element_by_xpath('//*[@id="firstHeading"]').text
-    return best_word
+            go_to_random_article()
+    else:
+        go_to_wikipedia_article(best_word)
+    return "not found"
 
 
 def open_google():
@@ -158,11 +151,6 @@ def go_to_wikipedia_article(name):
     name: str
         Name of the article to go to
 
-    Returns
-    --------
-    lst: string list
-        The words in the first 3 paragraphs of the article.
-
     """
     already_visited.append(name)
     driver.switch_to.window(driver.window_handles[-1])
@@ -174,13 +162,13 @@ def go_to_wikipedia_article(name):
     wiki_url = driver.find_element_by_class_name('iUh30').text.replace(' › ', '/')
     if check_invalid_url(wiki_url):
         driver.get(wiki_url)
-        driver.implicitly_wait(5)  # gives an implicit wait for 5 seconds
-        return reads_article()
+        driver.implicitly_wait(3)  # gives an implicit wait for 3 seconds
     else:
-        return []
+        go_to_random_article()
+        driver.implicitly_wait(3)  # gives an implicit wait for 3 seconds
 
 
-def go_to_random_article(read=True):
+def go_to_random_article():
     """A function that goes to a random Wikipedia article
 
     Parameters
@@ -188,17 +176,10 @@ def go_to_random_article(read=True):
     read: boolean (default=True)
         If True, reads the article
 
-    Returns
-    ----------
-    lst: string list
-        A list containing the words in the first 3 paragraphs.
-
     """
     driver.switch_to.window(driver.window_handles[-1])
     driver.get('https://fr.wikipedia.org/wiki/Sp%C3%A9cial:Page_au_hasard')
     driver.implicitly_wait(3)
-    if read:
-        return reads_article()
 
 
 def reads_article():
@@ -224,13 +205,7 @@ def reads_article():
         # no space and short elements
         lst = [x for x in text if x != '' and len(x) > 2]
     else:
-        if len(no_luck) > 0:
-            next_article = no_luck[-1]
-            no_luck.pop()
-            lst = go_to_wikipedia_article(next_article)
-        else:
-            lst = go_to_random_article()
-
+        lst = []
     return lst
 
 
@@ -335,14 +310,15 @@ if __name__ == "__main__":
     start_time = time.time()
     init()
     open_google()
-    nextGuess = guess_article("Transition de phase")
+    go_to_wikipedia_article("Transition de Phase")
+    guess_article()
     while True:
-        nextGuess = guess_article(nextGuess)
-        if nextGuess == "found_word":
+        result = guess_article()
+        if result == "found_word":
             end_time = time.time()
             time_lapsed = end_time - start_time
             time_convert(time_lapsed)
             break
         driver.switch_to.window(driver.window_handles[0])
 
-    print('Number of articles visited', len(already_visited), '\nArticles visited', already_visited)
+    print('Number of articles visited: ', len(already_visited), '\nArticles visited: ', already_visited)
