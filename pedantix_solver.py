@@ -37,19 +37,20 @@ LITTLE_HELP = ["France", "le", "la", "l", "les", "une", "un", "de", "du", "des",
                "avant", "par", "il", "ils", "elle", "elles", "en", "laquelle", "lequel", "lorsque", "quand", "encore"]
 already_guessed = []
 already_visited = []
-no_luck = ["politique", "cyclisme", "football", "fonction d'onde", "religion", "physique", "science",
-           "sentiment", "histoire", "industrie", "animal", "géographie",
-           "guerre", "rage", "Nantes", "Munich", "Nankin", "Science-fiction", "Truffe", "Histoire de l'Australie",
-           "Émeu d'Australie", "Magic Johnson",
-           "Alfred Russel Wallace",
-           "Homophobie",
-           "Empire State Building",
-           "Processeur",
-           "Strasbourg",
-           "Système solaire",
-           "Nestlé", "Les Aventuriers du rail", "mécanique (science)", "mécanique quantique", "automobile", "chimie",
-           "trabsformations de la matière", "mathématiques", "toologie", "Catan", "mécanique (technique)", "jeu vidéo",
-           "transition de phase"]
+no_luck = []
+test = ["politique", "cyclisme", "football", "fonction d'onde", "religion", "physique", "science",
+        "sentiment", "histoire", "industrie", "animal", "géographie",
+        "guerre", "rage", "Nantes", "Munich", "Nankin", "Science-fiction", "Truffe", "Histoire de l'Australie",
+        "Émeu d'Australie", "Magic Johnson",
+        "Alfred Russel Wallace",
+        "Homophobie",
+        "Empire State Building",
+        "Processeur",
+        "Strasbourg",
+        "Système solaire",
+        "Nestlé", "Les Aventuriers du rail", "mécanique (science)", "mécanique quantique", "automobile", "chimie",
+        "trabsformations de la matière", "mathématiques", "toologie", "Catan", "mécanique (technique)", "jeu vidéo",
+        "transition de phase"]
 
 
 def init():
@@ -110,13 +111,14 @@ def guess_article(name):
         Returns
         -----------
         best_word: str
-            The best scoring word found in the article
+            The best scoring word found in the article if no scoring words the next one in no_luck. If no_luck is empty,
+            it sends a random article.
 
         """
-    guessList = go_to_wikipedia_article(name)
+    guess_list = go_to_wikipedia_article(name)
     best_word_n = 0
     best_word = 'France'
-    for word in guessList:
+    for word in guess_list:
         if word not in already_guessed:
             result = guess_word(word)
             if result[0]:
@@ -129,8 +131,12 @@ def guess_article(name):
                     if result[1] >= 2 and result[-1] not in already_visited:
                         no_luck.append(result[-1])
     if best_word_n < 2:
-        best_word = no_luck[-1]
-        no_luck.pop()
+        if len(no_luck) > 0:
+            best_word = no_luck[-1]
+            no_luck.pop()
+        else:
+            go_to_random_article(read=False)
+            best_word = driver.find_element_by_xpath('//*[@id="firstHeading"]').text
     return best_word
 
 
@@ -145,7 +151,7 @@ def open_google():
 
 
 def go_to_wikipedia_article(name):
-    """A function that goes to a given wikipedia article. Checks for correct format of the article.
+    """A function that goes to a given wikipedia article.
 
     Parameters
     ----------
@@ -153,9 +159,9 @@ def go_to_wikipedia_article(name):
         Name of the article to go to
 
     Returns
-    ----------
-    lst: str list
-        Words present in the first paragraphs of the article.
+    --------
+    lst: string list
+        The words in the first 3 paragraphs of the article.
 
     """
     already_visited.append(name)
@@ -169,12 +175,45 @@ def go_to_wikipedia_article(name):
     if check_invalid_url(wiki_url):
         driver.get(wiki_url)
         driver.implicitly_wait(5)  # gives an implicit wait for 5 seconds
+        return reads_article()
     else:
         return []
 
-    if check_exists_by_xpath('//*[@id="mw-content-text"]/div[1]/p[2]') and check_exists_by_xpath(
+
+def go_to_random_article(read=True):
+    """A function that goes to a random Wikipedia article
+
+    Parameters
+    ----------
+    read: boolean (default=True)
+        If True, reads the article
+
+    Returns
+    ----------
+    lst: string list
+        A list containing the words in the first 3 paragraphs.
+
+    """
+    driver.switch_to.window(driver.window_handles[-1])
+    driver.get('https://fr.wikipedia.org/wiki/Sp%C3%A9cial:Page_au_hasard')
+    driver.implicitly_wait(3)
+    if read:
+        return reads_article()
+
+
+def reads_article():
+    """A function that reads the first three paragraphs of a wikipedia article. Checks if the format is correct.
+
+    Returns
+    ----------
+    lst: string list
+        A list containing the words of the first 3 paragraphs.
+
+    """
+    driver.implicitly_wait(3)
+    if check_exists_by_xpath('//*[@id="mw-content-text"]/div[1]/p[2]') and (check_exists_by_xpath(
             '/html/body/div/div/div[1]/div[3]/main/div[3]/div[3]/div[1]/p[1]') and check_exists_by_xpath(
-        '/html/body/div/div/div[1]/div[3]/main/div[3]/div[3]/div[1]/p[2]'):
+        '/html/body/div/div/div[1]/div[3]/main/div[3]/div[3]/div[1]/p[2]')):
         text0 = driver.find_element_by_xpath('/html/body/div/div/div[1]/div[3]/main/div[3]/div[3]/div[1]/p[1]').text
         text = driver.find_element_by_xpath('//*[@id="mw-content-text"]/div[1]/p[2]').text
         text2 = driver.find_element_by_xpath('/html/body/div/div/div[1]/div[3]/main/div[3]/div[3]/div[1]/p[2]').text
@@ -182,12 +221,16 @@ def go_to_wikipedia_article(name):
         if text == '':
             text = driver.find_element_by_xpath('//*[@id="mw-content-text"]/div[1]/p[3]').text
         text = re.findall('[a-zA-Z\u00C0-\u00FF]*', text)
-        # élimine les espaces et les éléments courts
+        # no space and short elements
         lst = [x for x in text if x != '' and len(x) > 2]
     else:
-        nextArticle = no_luck[-1]
-        no_luck.pop()
-        lst = go_to_wikipedia_article(nextArticle)
+        if len(no_luck) > 0:
+            next_article = no_luck[-1]
+            no_luck.pop()
+            lst = go_to_wikipedia_article(next_article)
+        else:
+            lst = go_to_random_article()
+
     return lst
 
 
@@ -292,7 +335,7 @@ if __name__ == "__main__":
     start_time = time.time()
     init()
     open_google()
-    nextGuess = guess_article("Constantinople")
+    nextGuess = guess_article("Transition de phase")
     while True:
         nextGuess = guess_article(nextGuess)
         if nextGuess == "found_word":
